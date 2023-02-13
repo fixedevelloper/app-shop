@@ -350,6 +350,7 @@ class StaticController extends  AbstractFOSRestController
             $stock=$this->stockRepository->findOneBy(['shop'=>$shop,'article'=>$item]);
             $data[] = [
                 'id' => $item->getId(),
+                'codebarre' => $item->getCodebarre(),
                 'name' => $item->getName(),
                 'price' => $item->getPrice(),
                 'description' => $item->getDescription(),
@@ -401,6 +402,7 @@ class StaticController extends  AbstractFOSRestController
         $image = $item->getImage();
         $data = [
             'id' => $item->getId(),
+            'codebarre' => $item->getCodebarre(),
             'name' => $item->getName(),
             'description' => $item->getDescription(),
             'price' => $item->getPrice(),
@@ -428,6 +430,7 @@ class StaticController extends  AbstractFOSRestController
         $image = $item->getImage();
         $data = [
             'id' => $item->getId(),
+            'codebarre' => $item->getCodebarre(),
             'name' => $item->getName(),
             'description' => $item->getDescription(),
             'price' => $item->getPrice(),
