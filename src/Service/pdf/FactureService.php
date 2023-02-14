@@ -31,9 +31,11 @@ class FactureService
     function header()
     {
         $this->pdf->SetFont('Times', '', 10);
-
         $logo= $this->params->get('domaininit'). 'assets/logo.png';
-        $this->pdf->Image($logo, 5, 10,40,25);
+        if(is_file($logo) && getimagesize($logo)) {
+            $this->pdf->Image($logo, 5, 10,40,25,"PNG");
+        }
+
         $this->pdf->SetFont('Times', 'B', 14);
         $this->pdf->SetXY(160, 15);
         $this->pdf->Cell(10, 6, "Ets Agensic", 0, 0, 'L');
