@@ -3,6 +3,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Article;
 use App\Entity\Caisse;
 use App\Entity\JourneeComptable;
 use App\Entity\LineSale;
@@ -98,6 +99,8 @@ class ManagerController extends AbstractFOSRestController
         $lines=$data['lines'];
         for ($i=0;$i<sizeof($lines);$i++){
             $product=$this->articleRepository->find($lines[$i]['id']);
+            $stock=$this->stockRepository->findOneBy(['article'=>$product,'shop'=>$user->getShop()]);
+            $stock->setQuantity($stock->getQuantity()-$lines[$i]['quantity']);
             $lineArticle=new LineSale();
             $lineArticle->setArticle($product);
             $lineArticle->setQuantity($lines[$i]['quantity']);
@@ -210,6 +213,21 @@ class ManagerController extends AbstractFOSRestController
         $this->factureService->init($saleArticle);
         $view = $this->view([
             'link' => $this->getParameter('domaininit') . 'facture/'.'facture.pdf'
+        ], Response::HTTP_OK, []);
+        return $this->handleView($view);
+    }
+
+    /**
+     * @param Article $article
+     * @return Response
+     * @Rest\Get ("/v1/etiquetes/pdf/{id}/{quantity}",name="getqrcode")
+     */
+    public function getQrcodePdf(Article $article)
+    {
+
+        $this->factureService->initEtiquete($article);
+        $view = $this->view([
+            'link' => $this->getParameter('domaininit') . 'etiquette/'.$article->getId().'.pdf'
         ], Response::HTTP_OK, []);
         return $this->handleView($view);
     }

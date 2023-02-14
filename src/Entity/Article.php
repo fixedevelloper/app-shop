@@ -27,6 +27,9 @@ class Article
     #[ORM\Column]
     private ?float $price = null;
 
+    #[ORM\Column]
+    private ?float $pricesell = null;
+
     #[ORM\Column(length: 255)]
     private ?string $status = null;
     #[ORM\Column(length: 255, nullable: true)]
@@ -41,6 +44,22 @@ class Article
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    /**
+     * @return float|null
+     */
+    public function getPricesell(): ?float
+    {
+        return $this->pricesell;
+    }
+
+    /**
+     * @param float|null $pricesell
+     */
+    public function setPricesell(?float $pricesell): void
+    {
+        $this->pricesell = $pricesell;
     }
 
     /**

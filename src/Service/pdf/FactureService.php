@@ -4,8 +4,10 @@
 namespace App\Service\pdf;
 
 
+use App\Entity\Article;
 use App\Entity\SaleArticle;
 use App\Repository\SaleArticleRepository;
+use App\Utils\QRCode;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class FactureService
@@ -30,7 +32,7 @@ class FactureService
     {
         $this->pdf->SetFont('Times', '', 10);
 
-       $logo= $this->params->get('domaininit'). 'assets/logo.png';
+        $logo= $this->params->get('domaininit'). 'assets/logo.png';
         $this->pdf->Image($logo, 5, 10,40,25);
         $this->pdf->SetFont('Times', 'B', 14);
         $this->pdf->SetXY(160, 15);
@@ -95,9 +97,9 @@ class FactureService
             $this->pdf->Cell(20, 6,utf8_decode($i) , 1, 0, 'L', true);
             $this->pdf->Cell(100, 6,utf8_decode($items[$i]->getArticle()->getName()) , 1, 0, 'L', true);
             $this->pdf->SetFont('Times', '', 8);
-            $this->pdf->Cell(30, 6, $items[$i]->getArticle()->getPrice(), 1, 0, 'C', true);
+            $this->pdf->Cell(30, 6, $items[$i]->getArticle()->getPricesell(), 1, 0, 'C', true);
             $this->pdf->Cell(20, 6, $items[$i]->getQuantity(), 1, 0, 'C', true);
-            $this->pdf->Cell(30, 6, $items[$i]->getQuantity()*$items[$i]->getArticle()->getPrice(), 1, 0, 'C', true);
+            $this->pdf->Cell(30, 6, $items[$i]->getQuantity()*$items[$i]->getArticle()->getPricesell(), 1, 0, 'C', true);
             $this->pdf->Ln();
             $h=$this->pdf->GetY();
         }
@@ -129,5 +131,56 @@ class FactureService
         }
 
         $this->pdf->Output('F', $dir . '/facture.pdf');
+    }
+    public function initEtiquete(Article $article)
+    {
+        $this->pdf->AddPage('P', 'A4', 0);
+
+        $this->pdf->AliasNbPages();
+        $this->header();
+        $this->bodyQrcode($article);
+        $dir = "etiquette/";
+        if (!is_dir($dir)) {
+            mkdir($dir, 0700);
+        }
+        $this->pdf->Output('F', $dir  . $article->getId() . '.pdf');
+    }
+
+    private function bodyQrcode(Article $article)
+    {    $this->pdf->SetFont('Times', '', 18);
+        $this->pdf->SetXY(10, $this->pdf->GetY()+5);
+        $this->pdf->Cell(200, 10, "Etiquetes Qrcode | Article:".$article->getName(), 0, 0, 'C');
+        $this->pdf->Ln(5);
+        $this->pdf->SetY($this->pdf->GetY()+20);
+        $textqr ="Product: ".$article->getName()."\n Price: ".$article->getPricesell()."\n";
+        $qr = QRCode::getMinimumQRCode($textqr, QR_ERROR_CORRECT_LEVEL_L);
+        $im = $qr->createImage(5, 2);
+        $valimage=imagepng($im, "qr-".$article->getName().'.png');
+        if ($valimage){
+            $x=5;
+            $xx=5;$xxx=5;$xxxx=5;
+            for ($i=0;$i<16;$i++){
+
+                switch ($x){
+                    case $x<=160:
+                    $this->pdf->Image("qr-".$article->getName().'.png', $x, 50);
+                    break;
+                    case $x>160 and $x<360:
+                        $this->pdf->Image("qr-".$article->getName().'.png', $xx, 100);
+                        $xx+=50;
+                        break;
+                    case $x>360 and $x<560:
+                        $this->pdf->Image("qr-".$article->getName().'.png', $xxx, 150);
+                        $xxx+=50;
+                        break;
+                    case $x>560:
+                        $this->pdf->Image("qr-".$article->getName().'.png', $xxxx, 200);
+                        $xxxx+=50;
+                        break;
+                }
+                $x+=50;
+            }
+
+        }
     }
 }

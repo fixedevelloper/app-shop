@@ -11,6 +11,7 @@ use App\Entity\Customer;
 use App\Entity\Image;
 use App\Entity\SellerShop;
 use App\Entity\Shop;
+use App\Entity\Stock;
 use App\Repository\ArticleRepository;
 use App\Repository\CaisseRepository;
 use App\Repository\CategoryRepository;
@@ -206,7 +207,31 @@ class StaticController extends  AbstractFOSRestController
         ], Response::HTTP_OK, []);
         return $this->handleView($view);
     }
-
+    /**
+     * @Rest\Post("/v1/articles/stock", name="api_articles_stock_post")
+     * @param Request $request
+     * @return Response
+     */
+    public function stockAdd(Request $request)
+    {
+        $res = json_decode($request->getContent(), true);
+        $data = $res['data'];
+        $article=$this->articleRepository->find($data['article']);
+        $shop=$this->shopRepository->find($data['shop']);
+        $stock=$this->stockRepository->findOneBy(['article'=>$article,'shop'=>$shop]);
+        if (is_null($stock)){
+            $stock=new Stock();
+            $stock->setQuantity(0);
+            $stock->setArticle($article);
+            $stock->setShop($shop);
+            $stock->setLastquantity(0);
+            $this->doctrine->persist($stock);
+        }
+        $stock->setQuantity($stock->getQuantity()+$data['quantity']);
+        $this->doctrine->flush();
+        $view = $this->view([], Response::HTTP_OK, []);
+        return $this->handleView($view);
+    }
     /**
      * @Rest\Post("/v1/articles", name="api_article_add")
      * @param Request $request
@@ -222,7 +247,12 @@ class StaticController extends  AbstractFOSRestController
             $article = new Article();
             $article->setCategory($category);
             $article->setStatus(Article::VISIBLE);
-            $article->setCodebarre($data['codebarre']);
+            $codebarre="";
+            $allowed_characters = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+            for ($i = 1; $i <= 18; ++$i) {
+                $codebarre .= $allowed_characters[rand(0, count($allowed_characters) - 1)];
+            }
+            $article->setCodebarre($codebarre);
             $this->doctrine->persist($article);
         } else {
             $article = $this->articleRepository->find($data['id']);
@@ -230,6 +260,7 @@ class StaticController extends  AbstractFOSRestController
         $article->setName($data['name']);
         $article->setDescription($data['description']);
         $article->setPrice($data['price']);
+        $article->setPricesell($data['pricesell']);
 
         if (!empty($data['image'])) {
             $image = $this->imageRepository->find($data['image']);
@@ -353,6 +384,7 @@ class StaticController extends  AbstractFOSRestController
                 'codebarre' => $item->getCodebarre(),
                 'name' => $item->getName(),
                 'price' => $item->getPrice(),
+                'pricesell' => $item->getPricesell(),
                 'description' => $item->getDescription(),
                 'category' => $item->getCategory()->getId(),
                 'category_name' => $item->getCategory()->getName(),
@@ -406,6 +438,7 @@ class StaticController extends  AbstractFOSRestController
             'name' => $item->getName(),
             'description' => $item->getDescription(),
             'price' => $item->getPrice(),
+            'pricesell' => $item->getPricesell(),
             'category' => $item->getCategory()->getId(),
             'category_name' => $item->getCategory()->getName(),
             'status' => $item->getStatus(),
@@ -434,6 +467,7 @@ class StaticController extends  AbstractFOSRestController
             'name' => $item->getName(),
             'description' => $item->getDescription(),
             'price' => $item->getPrice(),
+            'pricesell' => $item->getPricesell(),
             'category' => $item->getCategory()->getId(),
             'category_name' => $item->getCategory()->getName(),
             'status' => $item->getStatus(),
@@ -489,5 +523,13 @@ class StaticController extends  AbstractFOSRestController
         }
         $view = $this->view($data, Response::HTTP_OK, []);
         return $this->handleView($view);
+    }
+    function generateCodebarre(Article $article){
+        $transaction_id="";
+        $allowed_characters = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+        for ($i = 1; $i <= 18; ++$i) {
+            $transaction_id .= $allowed_characters[rand(0, count($allowed_characters) - 1)];
+        }
+
     }
 }
