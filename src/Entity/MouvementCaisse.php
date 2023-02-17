@@ -9,6 +9,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: MouvementCaisseRepository::class)]
 class MouvementCaisse
 {
+    const PENDING="PENDING";
+    const ACCEPTED="ACCEPTED";
+    const REFUSED="REFUSED";
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -16,6 +19,8 @@ class MouvementCaisse
 
     #[ORM\Column(length: 255)]
     private ?string $libelle = null;
+    #[ORM\Column(length: 255)]
+    private ?string $description = null;
     #[ORM\Column(length: 255)]
     private ?float $debit = 0.0;
 
@@ -27,8 +32,12 @@ class MouvementCaisse
 
     #[ORM\Column(length: 255)]
     private ?string $datestring = null;
+    #[ORM\Column(length: 255)]
+    private ?string $status = null;
     #[ORM\ManyToOne]
     private Caisse $caisse;
+    #[ORM\ManyToOne]
+    private ?User $benficiary = null;
     public function __construct()
     {
     }
@@ -36,6 +45,45 @@ class MouvementCaisse
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getStatus(): ?string
+    {
+        return $this->status;
+    }
+
+    /**
+     * @param string|null $status
+     */
+    public function setStatus(?string $status): void
+    {
+        $this->status = $status;
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
+
+    public function setDescription(?string $description): self
+    {
+        $this->description = $description;
+        return $this;
+    }
+
+    public function getBenficiary(): ?User
+    {
+        return $this->benficiary;
+    }
+
+    public function setBenficiary(?User $benficiary): self
+    {
+        $this->benficiary = $benficiary;
+        return $this;
     }
 
     public function getLibelle(): ?string

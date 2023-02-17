@@ -37,16 +37,43 @@ class MouvementCaisseRepository extends ServiceEntityRepository
                 ;
     }
 
-
-    /*
-    public function findOneBySomeField($value): ?MouvementCaisse
+    /**
+     * @param $datebegin
+     * @param $dateend
+     * @param $caisse
+     * @return MouvementCaisse[] Returns an array of SaleArticle objects
+     */
+    public function findByPeriodeAndCaisse($datebegin,$dateend,$caisse): array
     {
-        return $this->createQueryBuilder('m')
-            ->andWhere('m.exampleField = :val')
-            ->setParameter('val', $value)
-            ->getQuery()
-            ->getOneOrNullResult()
-        ;
+        $qb = $this->createQueryBuilder('s');
+        $qb=$qb->select('s')
+            ->andWhere("s.caisse = :shop")
+            ->setParameter('shop',$caisse);
+        $qb->andWhere('s.dateoperation >= :begin')
+            ->andWhere('s.dateoperation <= :end')
+            ->setParameter('begin',$datebegin )
+            ->setParameter('end', $dateend.' 23:59')
+            ->orderBy('s.id', 'DESC');
+        return $qb->getQuery()->getResult();
     }
-    */
+    /**
+     * @param $datebegin
+     * @param $dateend
+     * @param $shop
+     * @return MouvementCaisse[] Returns an array of SaleArticle objects
+     */
+    public function findByPeriodeshop($datebegin,$dateend,$shop): array
+    {
+        $qb = $this->createQueryBuilder('s');
+        $qb=$qb->select('s')
+            ->leftJoin('s.caisse','caisse')
+            ->andWhere("caisse.shop = :shop")
+            ->setParameter('shop',$shop);
+        $qb->andWhere('s.dateoperation >= :begin')
+            ->andWhere('s.dateoperation <= :end')
+            ->setParameter('begin',$datebegin )
+            ->setParameter('end', $dateend.' 23:59')
+            ->orderBy('s.id', 'DESC');
+        return $qb->getQuery()->getResult();
+    }
 }

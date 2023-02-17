@@ -7,6 +7,7 @@ use App\Entity\Article;
 use App\Entity\Caisse;
 use App\Entity\JourneeComptable;
 use App\Entity\LineSale;
+use App\Entity\MouvementCaisse;
 use App\Entity\SaleArticle;
 use App\Entity\Shop;
 use App\Entity\User;
@@ -14,6 +15,7 @@ use App\Repository\ArticleRepository;
 use App\Repository\CaisseRepository;
 use App\Repository\JourneeComptableRepository;
 use App\Repository\LineSaleRepository;
+use App\Repository\MouvementCaisseRepository;
 use App\Repository\SaleArticleRepository;
 use App\Repository\SellerShopRepository;
 use App\Repository\ShopRepository;
@@ -45,6 +47,7 @@ class ManagerController extends AbstractFOSRestController
     private $sellerShopRepository;
     private $factureService;
     private $journeeComptableRepository;
+    private $mouvementRepository;
 
     /**
      * ManagerController constructor.
@@ -64,7 +67,7 @@ class ManagerController extends AbstractFOSRestController
                                 EntityManagerInterface $doctrine,ArticleRepository $articleRepository,
                                 ShopRepository $shopRepository,CaisseRepository $caisseRepository,
                                 StockRepository $stockRepository, SaleArticleRepository $saleRepository,
-                                LineSaleRepository $lineSaleRepository)
+                                LineSaleRepository $lineSaleRepository,MouvementCaisseRepository $mouvementRepository)
     {
         $this->logger = $logger;
         $this->userRepository = $userRepository;
@@ -78,6 +81,7 @@ class ManagerController extends AbstractFOSRestController
         $this->sellerShopRepository=$sellerShopRepository;
         $this->factureService=$factureService;
         $this->journeeComptableRepository=$journeeComptableRepository;
+        $this->mouvementRepository=$mouvementRepository;
     }
     /**
      * @Rest\Post("/v1/sales", name="api_sales_post")
@@ -224,11 +228,101 @@ class ManagerController extends AbstractFOSRestController
      */
     public function getQrcodePdf(Article $article)
     {
-
         $this->factureService->initEtiquete($article);
         $view = $this->view([
             'link' => $this->getParameter('domaininit') . 'etiquette/'.$article->getId().'.pdf'
         ], Response::HTTP_OK, []);
+        return $this->handleView($view);
+    }
+
+    /**
+     * @Rest\Post("/v1/retraits", name="api_retrait_post")
+     * @param Request $request
+     * @return Response
+     * @throws \Exception
+     */
+    public function retraitPost(Request $request)
+    {
+        $res = json_decode($request->getContent(), true);
+        $data = $res['data'];
+        $caisse=$this->caisseRepository->find($data['caisse']);
+        $beneficiary=$this->userRepository->find($data['beneficiary']);
+        $retrait=new MouvementCaisse();
+        $retrait->setCaisse($caisse);
+        $retrait->setDescription($data['description']);
+        $retrait->setBenficiary($beneficiary);
+        $retrait->setDebit($data['amount']);
+        $retrait->setDateoperation(new \DateTimeImmutable("now",new \DateTimeZone("Africa/Brazzaville")));
+        $retrait->setDatestring(date("Y-m-d"));
+        $retrait->setLibelle("MVR-".$caisse->getId()."-".$beneficiary->getId().$retrait->getDateoperation()->getTimestamp());
+        $retrait->setStatus(MouvementCaisse::PENDING);
+        $this->doctrine->persist($retrait);
+        $this->doctrine->flush();
+        $view = $this->view([
+        ], Response::HTTP_OK, []);
+        return $this->handleView($view);
+    }
+    /**
+     * @Rest\Post("/v1/retraits/validation", name="api_retrait_valide_post")
+     * @param Request $request
+     * @return Response
+     * @throws \Exception
+     */
+    public function retraitValidePost(Request $request)
+    {
+        $res = json_decode($request->getContent(), true);
+        $data = $res['data'];
+        $mouvement=$this->mouvementRepository->find($data['id']);
+        if ($data['status']=="ACCEPTED"){
+            $mouvement->setStatus(MouvementCaisse::ACCEPTED);
+            $caisse=$mouvement->getCaisse();
+            $caisse->setSolde($caisse->getSolde()-$mouvement->getDebit());
+        }else{
+            $mouvement->setStatus(MouvementCaisse::REFUSED);
+        }
+        $this->doctrine->flush();
+        $view = $this->view([
+        ], Response::HTTP_OK, []);
+        return $this->handleView($view);
+    }
+    /**
+     * @Rest\Get("/v1/mouvements", name="api_mouvements_search")
+     * @param Request $request
+     * @return Response
+     */
+    public function searchMouvement(Request $request)
+    {
+        if ($request->get("datebegin")=='null'){
+            $datebegin=date("Y-m-d");
+            $dateend=date("Y-m-d");
+        }else{
+            $datebegin=$request->get("datebegin");
+            $dateend=$request->get("dateend");
+        }
+        if (!is_null($request->get("caisse"))){
+            $caisse=$this->caisseRepository->find($request->get("caisse"));
+            $items = $this->mouvementRepository->findByPeriodeAndCaisse($datebegin,$dateend,$caisse);
+        }else{
+            $shop=$this->shopRepository->find($request->get("shop"));
+            $items = $this->mouvementRepository->findByPeriodeshop($datebegin,$dateend,$shop);
+        }
+
+        $data = [];
+        foreach ($items as $item) {
+            $data[] = [
+                'id' => $item->getId(),
+                'beneficiary' => $item->getBenficiary()->getName(),
+                'credit' => $item->getCredit(),
+                'debit' => $item->getDebit(),
+                'created_at' => $item->getDateoperation(),
+                'shop' => $item->getCaisse()->getShop()->getLibelle(),
+                'shop_id' => $item->getCaisse()->getShop()->getId(),
+                'caisse' => $item->getCaisse()->getLibelle(),
+                'status' => $item->getStatus(),
+                'libelle' => $item->getLibelle(),
+            ];
+        }
+        $view = $this->view($data, Response::HTTP_OK, []);
         return $this->handleView($view);
     }
     function makeJourneComptable(Caisse $caisse,$amount){
@@ -256,9 +350,23 @@ class ManagerController extends AbstractFOSRestController
      */
     public function consultercaisse(Caisse $caisse): Response
     {
-        $em = $this->getDoctrine()->getManager();
         $mouvements=$this->saleRepository->findBy(['caisse'=>$caisse]);
-        $view = $this->view($mouvements, Response::HTTP_OK, []);
+        $data = [];
+        foreach ($mouvements as $item) {
+            $data[] = [
+                'id' => $item->getId(),
+                'customer' => $item->getCustomerName(),
+                'seller' => $item->getSellerShop()->getSeller()->getName(),
+                'amount' => $item->getAmount(),
+                'amounttc' => $item->getAmountTotal(),
+                'created_at' => $item->getDateCreated(),
+                'shop' => $item->getSellerShop()->getShop()->getLibelle(),
+                'shop_id' => $item->getSellerShop()->getShop()->getId(),
+                'caisse' => $item->getSellerShop()->getCaisse()->getId(),
+                'status' => $item->getStatus(),
+            ];
+        }
+        $view = $this->view($data, Response::HTTP_OK, []);
         return $this->handleView($view);
     }
 
