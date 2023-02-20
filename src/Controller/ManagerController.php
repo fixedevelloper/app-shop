@@ -29,6 +29,8 @@ use FOS\RestBundle\Controller\Annotations as Rest;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 
 class ManagerController extends AbstractFOSRestController
 {
@@ -104,6 +106,9 @@ class ManagerController extends AbstractFOSRestController
         for ($i=0;$i<sizeof($lines);$i++){
             $product=$this->articleRepository->find($lines[$i]['id']);
             $stock=$this->stockRepository->findOneBy(['article'=>$product,'shop'=>$user->getShop()]);
+          if (is_null($stock)|| $stock->getQuantity()<$lines[$i]['quantity']){
+              throw new ConflictHttpException("Product is not in stock");
+          }
             $stock->setQuantity($stock->getQuantity()-$lines[$i]['quantity']);
             $lineArticle=new LineSale();
             $lineArticle->setArticle($product);
@@ -142,6 +147,7 @@ class ManagerController extends AbstractFOSRestController
                 $lines[]=[
                     "article_id"=>$lineArticle->getArticle()->getId(),
                     "article"=>$lineArticle->getArticle()->getName(),
+                    "price"=>$lineArticle->getArticle()->getPricesell(),
                     "quantity"=>$lineArticle->getQuantity()
                 ];
             }
@@ -185,6 +191,7 @@ class ManagerController extends AbstractFOSRestController
                 $lines[]=[
                     "article_id"=>$lineArticle->getArticle()->getId(),
                     "article"=>$lineArticle->getArticle()->getName(),
+                    "price"=>$lineArticle->getArticle()->getPricesell(),
                     "quantity"=>$lineArticle->getQuantity()
                 ];
             }
