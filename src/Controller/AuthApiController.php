@@ -28,10 +28,10 @@ class AuthApiController extends AbstractFOSRestController
      * @var LoggerInterface
      */
     private $logger;
-    private $userRepository;
+    private UserRepository $userRepository;
     private SellerShopRepository $selleRepository;
     private ShopRepository $shopRepository;
-    private $doctrine;
+    private EntityManagerInterface $doctrine;
 
     /**
      * @param EntityManagerInterface $entityManager

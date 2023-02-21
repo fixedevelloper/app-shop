@@ -154,7 +154,7 @@ class FactureService
         $this->pdf->Cell(200, 10, "Etiquetes Qrcode | Article:".$article->getName(), 0, 0, 'C');
         $this->pdf->Ln(5);
         $this->pdf->SetY($this->pdf->GetY()+20);
-        $textqr ="Product: ".$article->getName()."\n Price: ".$article->getPricesell()."\n";
+        $textqr ="Code:".$article->getCodebarre()."\n Product: ".$article->getName()."\n Price: ".$article->getPricesell()."\n";
         $qr = QRCode::getMinimumQRCode($textqr, QR_ERROR_CORRECT_LEVEL_L);
         $im = $qr->createImage(5, 2);
         $valimage=imagepng($im, "qr-".$article->getName().'.png');
